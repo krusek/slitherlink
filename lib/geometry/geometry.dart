@@ -143,6 +143,10 @@ class Geometry {
     return _setColor(p1, leftColor) + _setColor(p2, rightColor);
   }
 
+  int markAllOpposite(Polygon p1, Iterable<Polygon> opposites) {
+    return opposites.map((e) => markOpposite(p1, e)).reduce((value, element) => value + element);
+  }
+
   PolygonColor? _minimumColor(Iterable<Polygon> polygons, bool orCreate) {
     final colors = polygons.map((e) => e.color).expand((element) {
       if (element != null) return [element];
@@ -157,6 +161,29 @@ class Geometry {
     final color = _minimumColor(polygons, true);
     final changes = polygons.map((p) => _setColor(p, color ?? PolygonColor(family: ColorPair.newPair(), member: true)));
     return changes.reduce((value, element) => value + element);
+  }
+
+  List<Polygon>? _findOpposites(Iterable<Polygon> polygons) {
+    int index = 0;
+    for (Polygon p in polygons) {
+      final color1 = p.color;
+      index += 1;
+      if (color1 == null) continue;
+      for (Polygon pp in polygons.skip(index)) {
+        final color2 = pp.color;
+        if (color2 == null) continue;
+        if (color1.opposite(color2)) {
+          return [p, pp];
+        }
+      }
+    }
+  }
+
+  List<Polygon> _findSame(Polygon polygon, Iterable<Polygon> neighbors) {
+    final color = polygon.color;
+    if (color == null) return [];
+
+    return neighbors.where((element) => color == element.color).toList();
   }
 
   bool numbersVisit() {
@@ -209,6 +236,58 @@ class Geometry {
           changes += markSame([remaining.first, polygon]);
         }
         if (changes > 0) return true;
+      }
+      if (value * 2 == neighbors.length && mainColorSet.length == value) {
+        final remaining = Set<Polygon>.from(neighbors);
+        remaining.removeAll(mainColorSet);
+        final changes = markAllOpposite(mainColorSet.first, remaining);
+        if (changes > 0) return true;
+      }
+
+      if (value == 2 && neighbors.length == 4) {
+        final opposites = _findOpposites(neighbors);
+        if (opposites != null) {
+          final remaining = Set<Polygon>.from(neighbors);
+          remaining.removeAll(opposites);
+          final changes = markOpposite(remaining.first, remaining.last);
+          if (changes > 0) return true;
+        }
+      }
+
+      final color = polygon.color;
+      if (color != null) {
+        final sames = _findSame(polygon, neighbors);
+        final remaining = Set<Polygon>.from(neighbors);
+        remaining.removeAll(sames);
+        if (remaining.length == value) {
+          final changes = markAllOpposite(polygon, remaining);
+          if (changes > 0) return true;
+        }
+      }
+      if (color != null) {
+        final opposites = neighbors.where((element) => color.opposite(element.color));
+        final remaining = Set<Polygon>.from(neighbors);
+        remaining.removeAll(opposites);
+        if (opposites.length == value) {
+          remaining.add(polygon);
+          final changes = markSame(remaining);
+          if (changes > 0) return true;
+        }
+      }
+
+      if (1 == value || 1 == neighbors.length - value) {
+        final opposites = _findOpposites(neighbors);
+        if (opposites != null) {
+          final remaining = Set<Polygon>.from(neighbors);
+          remaining.removeAll(opposites);
+          final changes = markSame(remaining);
+          if (value == 1) {
+            markSame([polygon, remaining.first]);
+          } else {
+            markOpposite(polygon, remaining.first);
+          }
+          if (changes > 0) return true;
+        }
       }
 
       if (value == 3) {
@@ -314,6 +393,49 @@ class Geometry {
       }).reduce((value, element) => value + element);
     }).reduce((value, element) => value + "\n" + element);
   }
+
+  String? checkPattern(List<String> pattern) {
+    Map<String, PolygonColor> map1 = {"A": PolygonColor.blue, "B": PolygonColor.green};
+    Map<PolygonColor, String> map2 = {PolygonColor.blue: "A", PolygonColor.green: "B"};
+
+    const skip = " ";
+    for (int i = 0; i < _grid.length; i++) {
+      for (int j = 0; j < _grid[0].length; j++) {
+        final String character = pattern[i].substring(j, j + 1);
+        if (character == skip) continue;
+        final color = _grid[i][j].color;
+        if (color == null) {
+          return "Expected $character at ($i,$j) but found empty";
+        }
+
+        final foundCharacter = map2[color];
+        final expectedColor = map1[character];
+        if (foundCharacter == null && expectedColor == null) {
+          map1[character] = color;
+          map2[color] = character;
+
+          final unit = character.codeUnitAt(0);
+          final oppositeCode = unit - 1 + 2 * (unit % 2);
+          final oppositeCharacter = String.fromCharCode(oppositeCode);
+          final oppositeColor = color.oppositeColor;
+          map1[oppositeCharacter] = oppositeColor;
+          map2[oppositeColor] = oppositeCharacter;
+        }
+        if (foundCharacter != null && expectedColor != null) {
+          if (character != foundCharacter) {
+            return "Expected $character at ($i, $j) but found $foundCharacter";
+          }
+        }
+        if (foundCharacter != null && expectedColor == null) {
+          return "Expected $character at ($i, $j) but found $foundCharacter";
+        }
+        if (foundCharacter == null && expectedColor != null) {
+          return "Expected $character at ($i, $j) but found different";
+        }
+      }
+    }
+    return null;
+  }
 }
 
 class PolygonColor {
@@ -333,7 +455,8 @@ class PolygonColor {
     return false;
   }
 
-  bool opposite(PolygonColor other) {
+  bool opposite(PolygonColor? other) {
+    if (other == null) return false;
     return other.family == family && other.member != member;
   }
 

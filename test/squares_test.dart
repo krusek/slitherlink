@@ -10,16 +10,15 @@ bool verifyMap(List<String> input, List<String> expected, {ParsingConfiguration?
   while (grid.numbersVisit() && count < 100) {
     count++;
   }
-  final e = expected.join("\n");
-  final string = grid.toString();
-  assert(e == string);
-  return e == string;
+  final string = grid.checkPattern(expected);
+  expect(string, null, reason: string);
+  return string == null;
 }
 
 void main() {
-  group('specific patterns', () {
+  group('number patterns', () {
     test('test 1s patterns', () {
-      assert(verifyMap([
+      verifyMap([
         " A ",
         "A1B",
         "   ",
@@ -27,8 +26,8 @@ void main() {
         " A ",
         "AAB",
         " A ",
-      ]));
-      assert(verifyMap([
+      ]);
+      verifyMap([
         "      ",
         "  1AB ",
         "      ",
@@ -36,18 +35,100 @@ void main() {
         " A ",
         "AAB",
         " A ",
-      ], configuration: const ParsingConfiguration(boxLength: 2, includeBorder: false)));
-      assert(verifyMap([
+      ], configuration: const ParsingConfiguration(boxLength: 2, includeBorder: false));
+      verifyMap([
         "   ",
         "A1B",
         "   ",
       ], [
-        " D ",
-        "A B",
         " C ",
-      ]));
+        "ACB",
+        " C ",
+      ]);
+    });
+
+    test('test 3s patterns', () {
+      verifyMap([
+        " A ",
+        "A3B",
+        "   ",
+      ], [
+        " A ",
+        "ABB",
+        " A ",
+      ]);
+      verifyMap([
+        "      ",
+        "  3AA ",
+        "      ",
+      ], [
+        " B ",
+        "BAA",
+        " B ",
+      ], configuration: const ParsingConfiguration(boxLength: 2, includeBorder: false));
+      verifyMap([
+        "   ",
+        "A3B",
+        "   ",
+      ], [
+        " E ",
+        "AFB",
+        " E ",
+      ]);
+      verifyMap([
+        "   ",
+        "A3A",
+        "   ",
+      ], [
+        " G ",
+        "ABA",
+        " H ",
+      ]);
+    });
+
+    test('test 2s patterns', () {
+      verifyMap([
+        " A ",
+        "A2 ",
+        "   ",
+      ], [
+        " A ",
+        "A B",
+        " B ",
+      ]);
+      verifyMap([
+        " B ",
+        "A2 ",
+        "   ",
+      ], [
+        " B ",
+        "A D",
+        " C ",
+      ]);
+    });
+
+    test('test 0s patterns', () {
+      verifyMap([
+        "   ",
+        "A0 ",
+        "   ",
+      ], [
+        " A ",
+        "AAA",
+        " A ",
+      ]);
+      verifyMap([
+        "   ",
+        " 0 ",
+        "   ",
+      ], [
+        " D ",
+        "DDD",
+        " D ",
+      ]);
     });
   });
+
   test('test point creation -- check random points', () {
     final grid = Geometry.parse([
       "      3",
