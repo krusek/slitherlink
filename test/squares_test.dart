@@ -129,6 +129,13 @@ void main() {
     });
   });
 
+  group('specific patterns', () {
+    test('cross pattern', () {
+      verifyMap(["AB", "B "], ["AB", "BB"]);
+      verifyMap(["AB", "BC"], ["AB", "BB"]);
+      verifyMap(["CB", "BA"], ["BB", "BA"]);
+    });
+  });
   test('test point creation -- check random points', () {
     final grid = Geometry.parse([
       "      3",
